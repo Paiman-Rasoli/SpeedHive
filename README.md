@@ -15,6 +15,24 @@ A desktop application focused on accurate and lightweight internet speed measure
 
 ---
 
+## 📥 Installation
+
+**Just want to use SpeedHive?** Download the latest version for your platform — no coding required!
+
+👉 **[Download from Releases](../../releases/latest)**
+
+| Platform                  | File to Download                 | How to Install                 |
+| ------------------------- | -------------------------------- | ------------------------------ |
+| **Windows**               | `SpeedHive_x.x.x_x64-setup.exe`  | Run the installer              |
+| **macOS (Intel)**         | `SpeedHive_x.x.x_x64.dmg`        | Open DMG, drag to Applications |
+| **macOS (Apple Silicon)** | `SpeedHive_x.x.x_aarch64.dmg`    | Open DMG, drag to Applications |
+| **Linux (Debian/Ubuntu)** | `SpeedHive_x.x.x_amd64.deb`      | `sudo dpkg -i SpeedHive_*.deb` |
+| **Linux (Other)**         | `SpeedHive_x.x.x_amd64.AppImage` | Make executable and run        |
+
+> 💡 **Tip:** On macOS, if you see "app is damaged", run: `xattr -cr /Applications/SpeedHive.app`
+
+---
+
 ## 📊 How Speed Measurement Works
 
 ### Download Speed
@@ -46,7 +64,9 @@ Upload speed is measured by sending data to a remote server and tracking how muc
 
 ---
 
-## 📦 Getting Started
+## 🛠️ Development Setup
+
+> **For developers** who want to build from source or contribute to SpeedHive.
 
 ### Prerequisites
 
