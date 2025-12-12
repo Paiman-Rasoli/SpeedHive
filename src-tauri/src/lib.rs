@@ -228,23 +228,22 @@ async fn upload_speed_test(
         let total_sent = Arc::new(AtomicU64::new(0));
         let done = Arc::new(AtomicBool::new(false));
 
+        // Max upload: 200 MB
+        let max_bytes: u64 = 200 * 1024 * 1024;
+
         // Many public "echo" endpoints reject long-running chunked uploads (often 500/413).
-        // To be more compatible, we do multiple fixed-size POSTs with Content-Length
-        // until the duration is reached.
+        // To be more compatible, we do multiple fixed-size POSTs with Content-Length.
         let chunk = Bytes::from(vec![0u8; chunk_size]);
         // Start with a decent payload size, but adapt downward if the server rejects it.
-        // This improves compatibility with public echo endpoints.
         let mut request_bytes: u64 = (chunk_size as u64) * 16; // ~4MB when chunk_size=256KB
         request_bytes = request_bytes.clamp(64 * 1024, 8 * 1024 * 1024);
 
-        // Progress reporter task (separate from the request body stream).
+        // Progress reporter task - shows current speed based on total bytes / total elapsed time
         let on_event_progress = on_event;
         let on_event_progress_task = on_event_progress.clone();
         let total_sent_progress = Arc::clone(&total_sent);
         let done_progress = Arc::clone(&done);
         tauri::async_runtime::spawn(async move {
-            let mut last_emit = Instant::now();
-            let mut last_bytes: u64 = 0;
             let emit_every = Duration::from_millis(250);
 
             loop {
@@ -254,24 +253,26 @@ async fn upload_speed_test(
 
                 sleep(emit_every).await;
 
+                if done_progress.load(Ordering::Relaxed) {
+                    break;
+                }
+
                 let bytes = total_sent_progress.load(Ordering::Relaxed);
-                let interval_secs = last_emit.elapsed().as_secs_f64().max(0.001);
-                let delta_bytes = bytes.saturating_sub(last_bytes);
-                let mbps = (delta_bytes as f64 * 8.0) / (interval_secs * 1_000_000.0);
+                let elapsed_secs = start.elapsed().as_secs_f64().max(0.001);
                 let elapsed_ms = start.elapsed().as_millis() as u64;
+                // Actual throughput: total bytes sent / total elapsed time
+                let mbps = (bytes as f64 * 8.0) / (elapsed_secs * 1_000_000.0);
 
                 let _ = on_event_progress_task.send(UploadSpeedEvent::Progress {
                     elapsed_ms,
                     bytes,
                     mbps,
                 });
-
-                last_emit = Instant::now();
-                last_bytes = bytes;
             }
         });
 
-        while start.elapsed() < stop_after {
+        // Upload until duration reached OR max_bytes (200 MB) sent
+        while start.elapsed() < stop_after && total_sent.load(Ordering::Relaxed) < max_bytes {
             let total_sent_for_stream = Arc::clone(&total_sent);
             let chunk_for_stream = chunk.clone();
             let remaining = Arc::new(AtomicU64::new(request_bytes));
@@ -317,10 +318,9 @@ async fn upload_speed_test(
                 .await
             {
                 Ok(r) => r,
-                Err(err) => {
+                Err(_err) => {
                     // If we already pushed some bytes, finish the test with whatever we measured.
                     // This avoids losing the final result due to a late network hiccup.
-                    let _ = format_error_with_chain(&err);
                     break;
                 }
             };
@@ -338,9 +338,14 @@ async fn upload_speed_test(
 
         done.store(true, Ordering::Relaxed);
 
+        // Give the progress task a moment to exit
+        sleep(Duration::from_millis(50)).await;
+
         let elapsed_ms = start.elapsed().as_millis() as u64;
         let elapsed_secs = start.elapsed().as_secs_f64().max(0.001);
         let bytes = total_sent.load(Ordering::Relaxed);
+
+        // Actual upload speed: total bytes sent / total elapsed time
         let avg_mbps = (bytes as f64 * 8.0) / (elapsed_secs * 1_000_000.0);
 
         let _ = on_event_progress.send(UploadSpeedEvent::Finished {

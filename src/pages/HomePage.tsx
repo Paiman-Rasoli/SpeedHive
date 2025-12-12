@@ -459,11 +459,6 @@ export default function HomePage() {
                     Mbps
                   </span>
                 </div>
-                {downloadAvgMbps == null ? null : (
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Avg: {downloadAvgMbps.toFixed(1)} Mbps
-                  </div>
-                )}
               </div>
               <div className="rounded-lg border bg-card p-4">
                 <div className="text-xs text-muted-foreground">Upload</div>
