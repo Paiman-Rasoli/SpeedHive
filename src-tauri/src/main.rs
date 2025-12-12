@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    speed_test_lib::run()
+    speedhive_lib::run()
 }

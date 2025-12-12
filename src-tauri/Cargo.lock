@@ -3374,7 +3374,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "speed-test"
+name = "speedhive"
 version = "0.1.0"
 dependencies = [
  "serde",
