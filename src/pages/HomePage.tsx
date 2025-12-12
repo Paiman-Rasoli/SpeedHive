@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { Channel, invoke } from "@tauri-apps/api/core";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,19 +12,74 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+type DownloadSpeedEvent =
+  | {
+      event: "started";
+      data: { url: string; durationMs: number };
+    }
+  | {
+      event: "progress";
+      data: { elapsedMs: number; bytes: number; mbps: number };
+    }
+  | {
+      event: "finished";
+      data: { elapsedMs: number; bytes: number; avgMbps: number };
+    }
+  | {
+      event: "error";
+      data: { message: string };
+    };
+
 export default function HomePage() {
   const [isRunning, setIsRunning] = useState(false);
+  const [downloadMbps, setDownloadMbps] = useState<number | null>(null);
+  const [downloadAvgMbps, setDownloadAvgMbps] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const onEventRef = useRef<Channel<DownloadSpeedEvent> | null>(null);
 
   const statusText = useMemo(() => {
     if (isRunning) return "Measuring…";
     return "Tap to start";
   }, [isRunning]);
 
-  function startSpeedTest() {
-    // Frontend-only for now.
-    // TODO: wire to Tauri command that calls Rust (e.g. get_download_speed / speed test runner).
-    // await invoke("get_download_speed")
+  async function startSpeedTest() {
+    if (isRunning) return;
+
+    setErrorMsg(null);
+    setDownloadMbps(null);
+    setDownloadAvgMbps(null);
     setIsRunning(true);
+
+    const onEvent = new Channel<DownloadSpeedEvent>();
+    onEventRef.current = onEvent;
+
+    onEvent.onmessage = (message) => {
+      if (!message) return;
+      switch (message.event) {
+        case "progress":
+          setDownloadMbps(message.data.mbps);
+          break;
+        case "finished":
+          setDownloadAvgMbps(message.data.avgMbps);
+          setIsRunning(false);
+          break;
+        case "error":
+          setErrorMsg(message.data.message);
+          setIsRunning(false);
+          break;
+        case "started":
+        default:
+          break;
+      }
+    };
+
+    // Example URL; configurable later.
+    // Because the download happens in Rust, CORS is not a concern here.
+    const url = "https://speed.hetzner.de/100MB.bin";
+    const durationMs = 10_000;
+
+    await invoke("download_speed_test", { url, durationMs, onEvent });
   }
 
   return (
@@ -40,7 +96,8 @@ export default function HomePage() {
           <CardHeader className="pb-4">
             <CardTitle>Speed test</CardTitle>
             <CardDescription>
-              Click the big button to begin. (Backend hook coming next.)
+              Click the big button to begin. Download speed streams to the UI via
+              a Tauri Channel.
             </CardDescription>
           </CardHeader>
 
@@ -82,11 +139,16 @@ export default function HomePage() {
               <div className="rounded-lg border bg-card p-4">
                 <div className="text-xs text-muted-foreground">Download</div>
                 <div className="mt-1 text-3xl font-semibold tracking-tight">
-                  —
+                  {downloadMbps == null ? "—" : downloadMbps.toFixed(1)}
                   <span className="ml-2 text-sm font-normal text-muted-foreground">
                     Mbps
                   </span>
                 </div>
+                {downloadAvgMbps == null ? null : (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Avg: {downloadAvgMbps.toFixed(1)} Mbps
+                  </div>
+                )}
               </div>
               <div className="rounded-lg border bg-card p-4">
                 <div className="text-xs text-muted-foreground">Upload</div>
@@ -98,6 +160,12 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+
+            {errorMsg ? (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {errorMsg}
+              </div>
+            ) : null}
           </CardContent>
 
           <CardFooter className="justify-end gap-2">
