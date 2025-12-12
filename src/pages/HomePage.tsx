@@ -71,7 +71,6 @@ export default function HomePage() {
     "idle" | "running" | "finished" | "error"
   >("idle");
   const [downloadMbps, setDownloadMbps] = useState<number | null>(null);
-  const [downloadAvgMbps, setDownloadAvgMbps] = useState<number | null>(null);
   const [downloadErrorMsg, setDownloadErrorMsg] = useState<string | null>(null);
   const [downloadElapsedMs, setDownloadElapsedMs] = useState(0);
 
@@ -80,7 +79,6 @@ export default function HomePage() {
     "idle" | "running" | "finished" | "error"
   >("idle");
   const [uploadMbps, setUploadMbps] = useState<number | null>(null);
-  const [uploadAvgMbps, setUploadAvgMbps] = useState<number | null>(null);
   const [uploadErrorMsg, setUploadErrorMsg] = useState<string | null>(null);
   const [uploadElapsedMs, setUploadElapsedMs] = useState(0);
   const [isDark, setIsDark] = useState(() =>
@@ -183,7 +181,6 @@ export default function HomePage() {
 
     setDownloadErrorMsg(null);
     setDownloadMbps(null);
-    setDownloadAvgMbps(null);
     setDownloadElapsedMs(0);
     setDownloadPhase("running");
 
@@ -197,7 +194,6 @@ export default function HomePage() {
           setDownloadMbps(message.data.mbps);
           break;
         case "finished":
-          setDownloadAvgMbps(message.data.avg_mbps);
           setDownloadPhase("finished");
           break;
         case "error":
@@ -221,7 +217,6 @@ export default function HomePage() {
 
     setUploadErrorMsg(null);
     setUploadMbps(null);
-    setUploadAvgMbps(null);
     setUploadElapsedMs(0);
     setUploadPhase("running");
 
@@ -242,8 +237,6 @@ export default function HomePage() {
           break;
         case "finished":
           finishedRef.current = true;
-          setUploadAvgMbps(message.data.avg_mbps);
-          // Keep the final displayed value stable by using the avg at the end.
           setUploadMbps(message.data.avg_mbps);
           setUploadPhase("finished");
           break;
@@ -491,7 +484,6 @@ export default function HomePage() {
                   onClick={() => {
                     setDownloadPhase("idle");
                     setDownloadMbps(null);
-                    setDownloadAvgMbps(null);
                     setDownloadElapsedMs(0);
                     setDownloadErrorMsg(null);
                   }}
@@ -510,7 +502,6 @@ export default function HomePage() {
                   onClick={() => {
                     setUploadPhase("idle");
                     setUploadMbps(null);
-                    setUploadAvgMbps(null);
                     setUploadElapsedMs(0);
                     setUploadErrorMsg(null);
                   }}
