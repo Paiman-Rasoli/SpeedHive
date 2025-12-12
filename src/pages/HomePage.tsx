@@ -24,15 +24,15 @@ import { cn } from "@/lib/utils";
 type DownloadSpeedEvent =
   | {
       event: "started";
-      data: { url: string; durationMs: number };
+      data: { url: string; duration_ms: number };
     }
   | {
       event: "progress";
-      data: { elapsedMs: number; bytes: number; mbps: number };
+      data: { elapsed_ms: number; bytes: number; mbps: number };
     }
   | {
       event: "finished";
-      data: { elapsedMs: number; bytes: number; avgMbps: number };
+      data: { elapsed_ms: number; bytes: number; avg_mbps: number };
     }
   | {
       event: "error";
@@ -42,18 +42,18 @@ type DownloadSpeedEvent =
 type UploadSpeedEvent =
   | {
       event: "started";
-      data: { url: string; durationMs: number; chunkSize: number };
+      data: { url: string; duration_ms: number; chunk_size: number };
     }
   | {
       event: "progress";
-      data: { elapsedMs: number; bytes: number; mbps: number };
+      data: { elapsed_ms: number; bytes: number; mbps: number };
     }
   | {
       event: "finished";
       data: {
-        elapsedMs: number;
+        elapsed_ms: number;
         bytes: number;
-        avgMbps: number;
+        avg_mbps: number;
       };
     }
   | {
@@ -197,7 +197,7 @@ export default function HomePage() {
           setDownloadMbps(message.data.mbps);
           break;
         case "finished":
-          setDownloadAvgMbps(message.data.avgMbps);
+          setDownloadAvgMbps(message.data.avg_mbps);
           setDownloadPhase("finished");
           break;
         case "error":
@@ -228,19 +228,27 @@ export default function HomePage() {
     const onEvent = new Channel<UploadSpeedEvent>();
     onUploadEventRef.current = onEvent;
 
+    // Use a ref to track if finished, so late progress events don't overwrite the final value
+    const finishedRef = { current: false };
+
     onEvent.onmessage = (message) => {
       if (!message) return;
       switch (message.event) {
         case "progress":
-          setUploadMbps(message.data.mbps);
+          // Ignore progress events after finished (they may arrive late due to async timing)
+          if (!finishedRef.current) {
+            setUploadMbps(message.data.mbps);
+          }
           break;
         case "finished":
-          setUploadAvgMbps(message.data.avgMbps);
+          finishedRef.current = true;
+          setUploadAvgMbps(message.data.avg_mbps);
           // Keep the final displayed value stable by using the avg at the end.
-          setUploadMbps(message.data.avgMbps);
+          setUploadMbps(message.data.avg_mbps);
           setUploadPhase("finished");
           break;
         case "error":
+          finishedRef.current = true;
           setUploadErrorMsg(message.data.message);
           setUploadPhase("error");
           break;
