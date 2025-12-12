@@ -1,6 +1,4 @@
-import { useState } from "react";
-import reactLogo from "@/assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,95 +9,104 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export default function HomePage() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [isRunning, setIsRunning] = useState(false);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  const statusText = useMemo(() => {
+    if (isRunning) return "Measuring…";
+    return "Tap to start";
+  }, [isRunning]);
+
+  function startSpeedTest() {
+    // Frontend-only for now.
+    // TODO: wire to Tauri command that calls Rust (e.g. get_download_speed / speed test runner).
+    // await invoke("get_download_speed")
+    setIsRunning(true);
   }
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto flex min-h-screen items-center justify-center">
-        <Card className="w-full max-w-xl">
-          <CardHeader className="space-y-4">
-            <div className="flex items-center justify-center gap-4">
-              <a href="https://vite.dev" target="_blank" rel="noreferrer">
-                <img
-                  src="/vite.svg"
-                  className="h-12 w-12 transition-transform hover:scale-105"
-                  alt="Vite logo"
-                />
-              </a>
-              <a href="https://tauri.app" target="_blank" rel="noreferrer">
-                <img
-                  src="/tauri.svg"
-                  className="h-12 w-12 transition-transform hover:scale-105"
-                  alt="Tauri logo"
-                />
-              </a>
-              <a href="https://react.dev" target="_blank" rel="noreferrer">
-                <img
-                  src={reactLogo}
-                  className="h-12 w-12 transition-transform hover:scale-105"
-                  alt="React logo"
-                />
-              </a>
-            </div>
+      <div className="container mx-auto flex min-h-screen flex-col items-center justify-center gap-6 py-10">
+        <div className="text-center">
+          <h1 className="text-3xl font-semibold tracking-tight">SpeedHive</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Fast, lightweight speed measurement for desktop.
+          </p>
+        </div>
 
-            <div className="space-y-1">
-              <CardTitle>Welcome to Tauri + React</CardTitle>
-              <CardDescription>
-                TailwindCSS + shadcn/ui are wired. This is the index route (/)
-                page.
-              </CardDescription>
-            </div>
+        <Card className="w-full max-w-xl">
+          <CardHeader className="pb-4">
+            <CardTitle>Speed test</CardTitle>
+            <CardDescription>
+              Click the big button to begin. (Backend hook coming next.)
+            </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                greet();
-              }}
-            >
-              <input
-                value={name}
-                onChange={(e) => setName(e.currentTarget.value)}
-                placeholder="Enter a name..."
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <Button type="submit">Greet</Button>
-            </form>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-center">
+              <button
+                type="button"
+                disabled={isRunning}
+                onClick={startSpeedTest}
+                aria-label={
+                  isRunning ? "Speed test running" : "Start speed test"
+                }
+                className={cn(
+                  "group relative grid h-56 w-56 place-items-center rounded-full",
+                  "bg-primary text-primary-foreground shadow-lg",
+                  "transition-all duration-200",
+                  "hover:shadow-xl active:scale-[0.99]",
+                  "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background",
+                  "disabled:cursor-not-allowed disabled:opacity-70"
+                )}
+              >
+                {/* Outer ring like fast.com */}
+                <span
+                  className={cn(
+                    "pointer-events-none absolute inset-0 rounded-full",
+                    "ring-1 ring-inset ring-white/20",
+                    isRunning ? "animate-pulse" : "group-hover:ring-white/30"
+                  )}
+                />
 
-            {greetMsg ? (
-              <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm">
-                {greetMsg}
+                <div className="text-center">
+                  <div className="text-5xl font-bold tracking-tight">GO</div>
+                  <div className="mt-2 text-xs opacity-90">{statusText}</div>
+                </div>
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border bg-card p-4">
+                <div className="text-xs text-muted-foreground">Download</div>
+                <div className="mt-1 text-3xl font-semibold tracking-tight">
+                  —
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    Mbps
+                  </span>
+                </div>
               </div>
-            ) : null}
+              <div className="rounded-lg border bg-card p-4">
+                <div className="text-xs text-muted-foreground">Upload</div>
+                <div className="mt-1 text-3xl font-semibold tracking-tight">
+                  —
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    Mbps
+                  </span>
+                </div>
+              </div>
+            </div>
           </CardContent>
 
           <CardFooter className="justify-end gap-2">
             <Button
               type="button"
-              variant="secondary"
-              onClick={() => {
-                setName("");
-                setGreetMsg("");
-              }}
-            >
-              Clear
-            </Button>
-            <Button
-              type="button"
               variant="outline"
               onClick={() => document.documentElement.classList.toggle("dark")}
             >
-              Toggle dark
+              Toggle theme
             </Button>
           </CardFooter>
         </Card>

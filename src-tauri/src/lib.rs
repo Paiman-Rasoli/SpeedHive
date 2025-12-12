@@ -6,6 +6,13 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+#[tauri::command]
+fn get_download_speed() -> String {
+    println!("Getting speed");
+
+    format!("Speed: 100 Mbps")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
